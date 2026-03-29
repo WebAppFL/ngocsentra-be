@@ -35,6 +35,10 @@ apiRouter.get('/health', (req, res) => {
     res.json({ status: 'OK', message: 'Server is running' });
 });
 
+apiRouter.get('/check', (req, res) => {
+    res.json({ status: 'OK', message: 'checking server' });
+});
+
 // Mount API router with /api prefix
 app.use('/api', apiRouter);
 
