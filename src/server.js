@@ -15,14 +15,28 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
-app.use('/api/auth', require('./routes/auth.routes'));
-app.use('/api/orders', require('./routes/order.routes'));
+// Root route
+app.get('/', (req, res) => {
+    res.json({
+        status: 'OK',
+        message: 'Welcome to API 🚀'
+    });
+});
+
+// Apply /api prefix to all routes
+const apiRouter = express.Router();
+
+// Mount route modules
+apiRouter.use('/auth', require('./routes/auth.routes'));
+apiRouter.use('/orders', require('./routes/order.routes'));
 
 // Health check
-app.get('/api/health', (req, res) => {
+apiRouter.get('/health', (req, res) => {
     res.json({ status: 'OK', message: 'Server is running' });
 });
+
+// Mount API router with /api prefix
+app.use('/api', apiRouter);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -38,3 +52,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
+// Export for Vercel serverless
+module.exports = app;
