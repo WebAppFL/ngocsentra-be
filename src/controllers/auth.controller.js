@@ -11,6 +11,28 @@ const generateToken = (userId) => {
     });
 };
 
+// @desc    Check if email exists
+// @route   POST /api/auth/check-email
+// @access  Public
+exports.checkEmail = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        const existingUser = await User.findOne({ email });
+
+        res.json({
+            success: true,
+            exists: !!existingUser
+        });
+    } catch (error) {
+        console.error('Check email error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi máy chủ'
+        });
+    }
+};
+
 // @desc    Register new user
 // @route   POST /api/auth/register
 // @access  Public
@@ -21,18 +43,19 @@ exports.register = async (req, res) => {
         if (!errors.isEmpty()) {
             return res.status(400).json({
                 success: false,
+                message: 'Thông tin không hợp lệ',
                 errors: errors.array()
             });
         }
 
-        const { email, password, fullName, phone, address } = req.body;
+        const { email, password, fullName, phone, address, dateOfBirth } = req.body;
 
         // Check if user exists
         const existingUser = await User.findOne({ email });
         if (existingUser) {
             return res.status(400).json({
                 success: false,
-                message: 'Email already registered'
+                message: 'Email đã được đăng ký'
             });
         }
 
@@ -47,6 +70,7 @@ exports.register = async (req, res) => {
             fullName,
             phone,
             address,
+            dateOfBirth,
             activationToken,
             activationTokenExpire
         });
@@ -61,7 +85,7 @@ exports.register = async (req, res) => {
 
         res.status(201).json({
             success: true,
-            message: 'Registration successful. Please check your email to activate your account.',
+            message: 'Đăng ký thành công. Vui lòng kiểm tra email để kích hoạt tài khoản.',
             data: {
                 email: user.email,
                 fullName: user.fullName
@@ -71,7 +95,7 @@ exports.register = async (req, res) => {
         console.error('Register error:', error);
         res.status(500).json({
             success: false,
-            message: 'Server error during registration'
+            message: 'Lỗi máy chủ khi đăng ký'
         });
     }
 };
@@ -86,6 +110,7 @@ exports.login = async (req, res) => {
         if (!errors.isEmpty()) {
             return res.status(400).json({
                 success: false,
+                message: 'Thông tin không hợp lệ',
                 errors: errors.array()
             });
         }
@@ -97,7 +122,7 @@ exports.login = async (req, res) => {
         if (!user) {
             return res.status(401).json({
                 success: false,
-                message: 'Invalid email or password'
+                message: 'Email hoặc mật khẩu không đúng'
             });
         }
 
@@ -105,7 +130,7 @@ exports.login = async (req, res) => {
         if (!user.isActive) {
             return res.status(403).json({
                 success: false,
-                message: 'Please activate your account first. Check your email for activation link.'
+                message: 'Vui lòng kích hoạt tài khoản trước. Kiểm tra email để lấy link kích hoạt.'
             });
         }
 
@@ -114,7 +139,7 @@ exports.login = async (req, res) => {
         if (!isPasswordValid) {
             return res.status(401).json({
                 success: false,
-                message: 'Invalid email or password'
+                message: 'Email hoặc mật khẩu không đúng'
             });
         }
 
@@ -123,7 +148,7 @@ exports.login = async (req, res) => {
 
         res.json({
             success: true,
-            message: 'Login successful',
+            message: 'Đăng nhập thành công',
             data: {
                 token,
                 user: {
@@ -140,17 +165,18 @@ exports.login = async (req, res) => {
         console.error('Login error:', error);
         res.status(500).json({
             success: false,
-            message: 'Server error during login'
+            message: 'Lỗi máy chủ khi đăng nhập'
         });
     }
 };
 
 // @desc    Activate user account
-// @route   GET /api/auth/activate/:token
+// @route   POST /api/auth/activate/:token
 // @access  Public
 exports.activateAccount = async (req, res) => {
     try {
         const { token } = req.params;
+        const { password } = req.body;
 
         const user = await User.findOne({
             activationToken: token,
@@ -160,25 +186,34 @@ exports.activateAccount = async (req, res) => {
         if (!user) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid or expired activation token'
+                message: 'Link kích hoạt không hợp lệ hoặc đã hết hạn'
             });
         }
 
-        // Activate user
-        user.isActive = true;
-        user.activationToken = undefined;
-        user.activationTokenExpire = undefined;
-        await user.save();
+        // Case 2: Email link activation - only activate account, don't touch password
+        if (!password) {
+            user.isActive = true;
+            user.activationToken = undefined;
+            user.activationTokenExpire = undefined;
+            await user.save();
 
-        res.json({
-            success: true,
-            message: 'Account activated successfully. You can now login.'
+            return res.json({
+                success: true,
+                message: 'Kích hoạt tài khoản thành công. Bạn có thể đăng nhập ngay bây giờ.'
+            });
+        }
+
+        // Case 1: Should not happen - password is already set during registration
+        // This case is kept for backward compatibility but shouldn't be used
+        return res.status(400).json({
+            success: false,
+            message: 'Yêu cầu kích hoạt không hợp lệ'
         });
     } catch (error) {
         console.error('Activation error:', error);
         res.status(500).json({
             success: false,
-            message: 'Server error during activation'
+            message: 'Lỗi máy chủ khi kích hoạt tài khoản'
         });
     }
 };
@@ -195,14 +230,14 @@ exports.resendActivation = async (req, res) => {
         if (!user) {
             return res.status(404).json({
                 success: false,
-                message: 'User not found'
+                message: 'Không tìm thấy người dùng'
             });
         }
 
         if (user.isActive) {
             return res.status(400).json({
                 success: false,
-                message: 'Account is already activated'
+                message: 'Tài khoản đã được kích hoạt'
             });
         }
 
@@ -217,13 +252,13 @@ exports.resendActivation = async (req, res) => {
 
         res.json({
             success: true,
-            message: 'Activation email sent successfully'
+            message: 'Email kích hoạt đã được gửi thành công'
         });
     } catch (error) {
         console.error('Resend activation error:', error);
         res.status(500).json({
             success: false,
-            message: 'Server error'
+            message: 'Lỗi máy chủ'
         });
     }
 };
@@ -250,7 +285,7 @@ exports.getMe = async (req, res) => {
         console.error('Get me error:', error);
         res.status(500).json({
             success: false,
-            message: 'Server error'
+            message: 'Lỗi máy chủ'
         });
     }
 };

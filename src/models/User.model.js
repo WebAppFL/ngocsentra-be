@@ -25,6 +25,9 @@ const userSchema = new mongoose.Schema({
         type: String,
         trim: true
     },
+    dateOfBirth: {
+        type: Date
+    },
     address: {
         type: String,
         trim: true

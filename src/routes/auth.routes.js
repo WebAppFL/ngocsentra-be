@@ -18,9 +18,10 @@ const loginValidation = [
 ];
 
 // Routes
+router.post('/check-email', authController.checkEmail);
 router.post('/register', registerValidation, authController.register);
 router.post('/login', loginValidation, authController.login);
-router.get('/activate/:token', authController.activateAccount);
+router.post('/activate/:token', authController.activateAccount);
 router.post('/resend-activation', authController.resendActivation);
 router.get('/me', protect, authController.getMe);
 
