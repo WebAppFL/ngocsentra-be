@@ -17,7 +17,7 @@ const createTransporter = () => {
 exports.sendActivationEmail = async (email, fullName, token) => {
   const transporter = createTransporter();
 
-  const activationUrl = `${process.env.FRONTEND_URL}/activate/${token}`;
+  const activationUrl = `${process.env.FRONTEND_URL}activate/${token}`;
 
   const mailOptions = {
     from: process.env.MAIL_FROM,
