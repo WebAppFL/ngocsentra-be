@@ -112,3 +112,4 @@ src/
 - Tài khoản cần được kích hoạt qua email trước khi đăng nhập
 - Token JWT có thời hạn 7 ngày (có thể thay đổi trong .env)
 - Link kích hoạt có hiệu lực 24 giờ
+- 
